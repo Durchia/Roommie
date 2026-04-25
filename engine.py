@@ -2,8 +2,8 @@ from models.house_owner import HouseOwner
 from models.house_seeker import HouseSeeker
 from models.scoring_strategy import DefaultScoringStrategy, ScoringStrategy
 
-BUDGET_MARGIN      = 100   # € — seeker may exceed owner rent by this much
-SUGGESTION_PENALTY = 30    # pts deducted when neighbourhood not preferred
+BUDGET_MARGIN      = 150   # € — seeker may exceed owner rent by this much
+SUGGESTION_PENALTY = 15    # pts deducted when neighbourhood not preferred
 
 
 class MatchingEngine:

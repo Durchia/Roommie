@@ -57,9 +57,15 @@ class DefaultScoringStrategy(ScoringStrategy):
         return (len(a & b) / len(union)) * WEIGHT_LANGUAGES
 
     def vibe_score(self, user_a, user_b) -> float:
-        """Flat WEIGHT_VIBE bonus when both occupations share a category."""
+        """Flat WEIGHT_VIBE bonus when both occupations share a category.
+
+        Normalises with .strip().title() so 'software developer' matches
+        'Software Developer' regardless of how the string was stored.
+        """
+        occ_a = user_a.occupation.strip().title()
+        occ_b = user_b.occupation.strip().title()
         for members in OCCUPATION_CATEGORIES.values():
-            if user_a.occupation in members and user_b.occupation in members:
+            if occ_a in members and occ_b in members:
                 return float(WEIGHT_VIBE)
         return 0.0
 

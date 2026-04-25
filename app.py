@@ -9,6 +9,7 @@ import streamlit as st
 
 from data.storage import (
     seed_if_empty,
+    seed_vilnius_if_missing,
     ensure_social_fields,
     authenticate,
     register_user,
@@ -35,97 +36,167 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------------------------
-# Part 1 — CSS  (high-contrast, forced dark text, white cards)
+# Part 1 — CSS  (Gen-Z glassmorphism)
 # ---------------------------------------------------------------------------
 
 st.markdown(
     """
     <style>
-        /* ── Main background ───────────────────────────────────── */
-        .stApp,
-        [data-testid="stAppViewContainer"],
-        [data-testid="stMainBlockContainer"] {
-            background-color: #f4f4f4 !important;
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+        /* ── Root typography ───────────────────────────────────── */
+        html, body, [class*="css"] {
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
         }
 
-        /* ── Force ALL text dark ───────────────────────────────── */
+        /* ── Gradient background ───────────────────────────────── */
+        .stApp,
+        [data-testid="stAppViewContainer"] {
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%) !important;
+            min-height: 100vh;
+        }
+        [data-testid="stMainBlockContainer"] {
+            background: transparent !important;
+        }
+
+        /* ── Force ALL text light ──────────────────────────────── */
         html, body,
         p, span, div, li, label, h1, h2, h3, h4, h5, h6,
         .stMarkdown, .stMarkdown p, .stMarkdown span,
         .stMarkdown h1, .stMarkdown h2, .stMarkdown h3,
         [data-testid="stText"],
         [data-testid="stMarkdownContainer"] p {
-            color: #333333 !important;
+            color: #f0f0ff !important;
         }
 
         /* ── Metric widgets ────────────────────────────────────── */
-        [data-testid="stMetricValue"]       { color: #1a1a2e !important; font-weight: 700 !important; }
-        [data-testid="stMetricLabel"] p     { color: #555555 !important; font-size: 0.78rem !important; }
+        [data-testid="stMetricValue"]   { color: #ffffff !important; font-weight: 800 !important; }
+        [data-testid="stMetricLabel"] p { color: #b0b0cc !important; font-size: 0.78rem !important; }
 
         /* ── Caption / small text ──────────────────────────────── */
         [data-testid="stCaptionContainer"] p,
-        .stCaption { color: #666666 !important; }
+        .stCaption { color: #a0a0cc !important; }
 
-        /* ── White card panels ─────────────────────────────────── */
+        /* ── Glassmorphism card panels ─────────────────────────── */
         [data-testid="stVerticalBlockBorderWrapper"] {
-            background-color: #ffffff !important;
-            border: 1px solid #e0e0e0 !important;
-            border-radius: 12px !important;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.06) !important;
+            background: rgba(255, 255, 255, 0.07) !important;
+            backdrop-filter: blur(14px) !important;
+            -webkit-backdrop-filter: blur(14px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            border-radius: 20px !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
         }
 
         /* ── Sidebar ───────────────────────────────────────────── */
         [data-testid="stSidebar"] {
-            background-color: #ffffff !important;
-            border-right: 1px solid #e0e0e0;
+            background: rgba(15, 12, 41, 0.7) !important;
+            backdrop-filter: blur(20px) !important;
+            -webkit-backdrop-filter: blur(20px) !important;
+            border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
         }
         [data-testid="stSidebar"] p,
         [data-testid="stSidebar"] label,
-        [data-testid="stSidebar"] span { color: #333333 !important; }
+        [data-testid="stSidebar"] span { color: #e0e0ff !important; }
 
         /* ── Inputs ────────────────────────────────────────────── */
         [data-testid="stTextInput"] input,
         [data-testid="stTextArea"]  textarea {
-            background: #fafafa !important;
-            color: #333 !important;
-            border: 1px solid #ccc !important;
+            background: rgba(255, 255, 255, 0.08) !important;
+            color: #f0f0ff !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            border-radius: 12px !important;
+        }
+
+        /* ── Primary button — gradient purple ──────────────────── */
+        [data-testid="stBaseButton-primary"],
+        [data-testid="stBaseButton-primary"] > button,
+        button[kind="primary"] {
+            background: linear-gradient(135deg, #7b2ff7 0%, #f107a3 100%) !important;
+            color: #ffffff !important;
+            border: none !important;
+            border-radius: 50px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.4px !important;
+            box-shadow: 0 4px 20px rgba(123, 47, 247, 0.45) !important;
+        }
+
+        /* ── Secondary / default button ────────────────────────── */
+        [data-testid="stBaseButton-secondary"],
+        [data-testid="stBaseButton-secondary"] > button,
+        button[kind="secondary"] {
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: #f0f0ff !important;
+            border: 1px solid rgba(255, 255, 255, 0.25) !important;
+            border-radius: 50px !important;
+            font-weight: 600 !important;
         }
 
         /* ── Habit / tier pills ────────────────────────────────── */
         .pill {
             display: inline-block;
-            background: #e8eaf6;
-            color: #3949ab !important;
+            background: rgba(123, 47, 247, 0.25);
+            color: #c9a9ff !important;
+            border: 1px solid rgba(123, 47, 247, 0.45);
             border-radius: 999px;
-            padding: 2px 10px;
+            padding: 2px 12px;
             font-size: 0.78rem;
             margin: 2px;
-            font-weight: 500;
+            font-weight: 600;
         }
-        .badge-perfect   { background:#d4edda; color:#155724 !important; padding:3px 12px; border-radius:999px; font-size:0.82rem; font-weight:600; }
-        .badge-suggested { background:#fff3cd; color:#856404 !important; padding:3px 12px; border-radius:999px; font-size:0.82rem; font-weight:600; }
+        .badge-perfect {
+            background: rgba(39, 174, 96, 0.25);
+            color: #7dffb2 !important;
+            border: 1px solid rgba(39, 174, 96, 0.5);
+            padding: 3px 12px;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+        .badge-suggested {
+            background: rgba(241, 196, 15, 0.2);
+            color: #ffe57f !important;
+            border: 1px solid rgba(241, 196, 15, 0.4);
+            padding: 3px 12px;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
 
         /* ── Discovery card ────────────────────────────────────── */
         .disc-card {
-            background: #ffffff;
-            border: 1px solid #e0e0e0;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 24px;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35);
             padding: 28px 32px;
             max-width: 680px;
             margin: 0 auto;
         }
-        .disc-card h2, .disc-card p, .disc-card span { color: #333333 !important; }
-        .disc-name  { font-size: 1.9rem; font-weight: 700; color: #1a1a2e !important; margin-bottom: 2px; }
-        .disc-sub   { font-size: 1rem;   color: #555555 !important; margin-bottom: 10px; }
-        .disc-bio   { font-style: italic; color: #444444 !important; margin: 10px 0; }
-        .disc-detail{ font-size: 0.9rem;  color: #333333 !important; margin: 6px 0; }
+        .disc-card h2, .disc-card p, .disc-card span { color: #f0f0ff !important; }
+        .disc-name   { font-size: 1.9rem; font-weight: 800; color: #ffffff !important; margin-bottom: 2px; }
+        .disc-sub    { font-size: 1rem;   color: #b0b0cc !important; margin-bottom: 10px; }
+        .disc-bio    { font-style: italic; color: #c0c0e0 !important; margin: 10px 0; }
+        .disc-detail { font-size: 0.9rem; color: #d0d0f0 !important; margin: 6px 0; }
 
-        /* ── Progress bar colour ───────────────────────────────── */
-        [data-testid="stProgress"] > div > div { background-color: #4A90E2 !important; }
+        /* ── Progress bar — gradient ───────────────────────────── */
+        [data-testid="stProgress"] > div > div {
+            background: linear-gradient(90deg, #7b2ff7, #f107a3) !important;
+        }
 
         /* ── Divider ───────────────────────────────────────────── */
-        hr { border-color: #e0e0e0 !important; }
+        hr { border-color: rgba(255, 255, 255, 0.12) !important; }
+
+        /* ── Tab styling ───────────────────────────────────────── */
+        [data-testid="stTabs"] [data-baseweb="tab"] {
+            color: #a0a0cc !important;
+            font-weight: 600 !important;
+        }
+        [data-testid="stTabs"] [aria-selected="true"] {
+            color: #c9a9ff !important;
+            border-bottom-color: #7b2ff7 !important;
+        }
     </style>
     """,
     unsafe_allow_html=True,
@@ -136,6 +207,7 @@ st.markdown(
 # ---------------------------------------------------------------------------
 
 seed_if_empty()
+seed_vilnius_if_missing()
 ensure_social_fields()
 
 for _key, _default in [
@@ -271,11 +343,7 @@ def render_discovery(user) -> None:
     # ── Discovery card ───────────────────────────────────────────────────────
     role_str = "House Owner" if isinstance(candidate, HouseOwner) else "House Seeker"
 
-    if isinstance(candidate, HouseOwner):
-        location_line = f"📍 {candidate.neighborhood} &nbsp; 💶 €{candidate.monthly_rent}/mo"
-    else:
-        hoods = " · ".join(candidate.preferred_neighborhoods)
-        location_line = f"💶 Budget €{candidate.max_budget}/mo &nbsp; 📍 {hoods}"
+    location_line = candidate.get_detail()
 
     engine    = MatchingEngine()
     breakdown = engine.score_breakdown(user, candidate)
@@ -403,11 +471,7 @@ def render_mutual_matches(user) -> None:
                 st.markdown(f"### {match.name}")
                 st.markdown(f"**{role_str}** · {match.occupation} · Age {match.age}")
                 st.markdown(f"*{match.bio}*")
-                if isinstance(match, HouseOwner):
-                    st.markdown(f"📍 {match.neighborhood} &nbsp; 💶 €{match.monthly_rent}/mo")
-                else:
-                    hoods = ", ".join(match.preferred_neighborhoods)
-                    st.markdown(f"💶 €{match.max_budget}/mo &nbsp; 📍 {hoods}")
+                st.markdown(match.get_detail())
                 if shared:
                     st.markdown("**Shared habits:** " + _pills(sorted(shared)),
                                 unsafe_allow_html=True)
@@ -441,11 +505,7 @@ def render_profile_card(user) -> None:
         st.markdown(f"*{user.bio}*")
         st.markdown(_pills(user.habits), unsafe_allow_html=True)
         st.caption(f"🗣 {' · '.join(user.languages)}")
-        if isinstance(user, HouseOwner):
-            st.markdown(f"📍 **{user.neighborhood}** &nbsp; 💶 **€{user.monthly_rent}/mo**")
-        else:
-            hoods = " · ".join(user.preferred_neighborhoods)
-            st.markdown(f"💶 Budget **€{user.max_budget}/mo** &nbsp; 📍 **{hoods}**")
+        st.markdown(user.get_detail())
 
 
 # ---------------------------------------------------------------------------

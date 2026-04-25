@@ -239,3 +239,54 @@ def seed_if_empty() -> None:
         for user in all_roommies
     ]
     save_records(records)
+
+
+def seed_vilnius_if_missing() -> None:
+    """
+    Load the 20 synthetic Vilnius users from vilnius_users.json (project root)
+    and append any whose user_id is not already present in users.json.
+    Seed records get the SEED_NO_LOGIN sentinel and cannot log in.
+    The 'nationality' field and any other unknown fields are ignored.
+    """
+    _VILNIUS_FILE = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "vilnius_users.json"
+    )
+    if not os.path.exists(_VILNIUS_FILE):
+        return
+
+    records = load_records()
+    existing_ids = {r["user_id"] for r in records}
+
+    with open(_VILNIUS_FILE, "r", encoding="utf-8") as f:
+        vilnius_data = json.load(f)
+
+    changed = False
+    for v in vilnius_data:
+        if v["user_id"] in existing_ids:
+            continue
+        base = dict(
+            user_id=v["user_id"], name=v["name"], age=v["age"],
+            gender=v.get("gender", ""), occupation=v["occupation"],
+            bio=v["bio"], avatar_url=v.get("avatar_url", ""),
+            habits=v["habits"], languages=v["languages"],
+        )
+        if v["role"] == "HouseOwner":
+            user = HouseOwner(
+                **base,
+                neighborhood=v["neighborhood"],
+                monthly_rent=v["monthly_rent"],
+            )
+        else:
+            user = HouseSeeker(
+                **base,
+                max_budget=v["max_budget"],
+                preferred_neighborhoods=v["preferred_neighborhoods"],
+            )
+        records.append(
+            _user_to_record(user, f"vilnius{user.user_id}@roommie.lt", "SEED_NO_LOGIN")
+        )
+        existing_ids.add(user.user_id)
+        changed = True
+
+    if changed:
+        save_records(records)
