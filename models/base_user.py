@@ -1,5 +1,14 @@
-class User:
-    """Base class representing a user in the Roommie matching system."""
+from abc import ABC, abstractmethod
+
+
+class User(ABC):
+    """
+    Abstract base class for all Roommie users.
+
+    OOP pillars demonstrated here:
+      Abstraction   — ABC enforces __str__ and get_detail() on every subclass.
+      Encapsulation — age is private (_age) and validated through a property.
+    """
 
     def __init__(
         self,
@@ -7,31 +16,48 @@ class User:
         name: str,
         age: int,
         gender: str,
-        occupation: str,  
-        bio: str,         
-        avatar_url: str,  
+        occupation: str,
+        bio: str,
+        avatar_url: str,
         habits: list[str],
         languages: list[str],
     ):
-        self.user_id = user_id
-        self.name = name
-        self.age = age
-        self.gender = gender
+        self.user_id    = user_id
+        self.name       = name
+        self.age        = age          # routed through the property setter
+        self.gender     = gender
         self.occupation = occupation
-        self.bio = bio
+        self.bio        = bio
         self.avatar_url = avatar_url
-        self.habits = habits
-        self.languages = languages
+        self.habits     = habits
+        self.languages  = languages
+
+    # ── Encapsulation: age ────────────────────────────────────────────────
+
+    @property
+    def age(self) -> int:
+        return self._age
+
+    @age.setter
+    def age(self, value: int) -> None:
+        if not (16 <= value <= 120):
+            raise ValueError(
+                f"Age must be between 16 and 120, got {value!r}."
+            )
+        self._age = value
+
+    # ── Concrete shared method ────────────────────────────────────────────
 
     def get_summary(self) -> str:
-        """Returns a short, friendly summary of the user."""
+        """Short one-liner used in menus and logs."""
         return f"{self.name}, {self.age} ({self.occupation})"
 
+    # ── Abstraction: subclasses must implement both ───────────────────────
+
+    @abstractmethod
     def __str__(self) -> str:
-        habits_str = ", ".join(self.habits) if self.habits else "none"
-        languages_str = ", ".join(self.languages) if self.languages else "none"
-        return (
-            f"User(id={self.user_id}, name={self.name}, age={self.age}, "
-            f"occupation={self.occupation}, habits=[{habits_str}], "
-            f"languages=[{languages_str}])"
-        )
+        """Return a full string representation of the user."""
+
+    @abstractmethod
+    def get_detail(self) -> str:
+        """Return the role-specific detail line (location + rent or budget)."""

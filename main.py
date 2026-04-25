@@ -8,7 +8,7 @@ from data.storage import (
     get_all_users, find_record_by_email, record_to_user, next_user_id,
 )
 from engine import MatchingEngine
-from models import HouseOwner, HouseSeeker
+from models import HouseOwner, HouseSeeker, UserFactory
 
 # ---------------------------------------------------------------------------
 # Display helpers
@@ -19,19 +19,15 @@ def print_separator(char="-", width=42):
 
 
 def show_profile(user):
-    role = "House Owner" if isinstance(user, HouseOwner) else "House Seeker"
+    # Derive role label from class name — no isinstance needed for display
+    role = type(user).__name__.replace("House", "House ")
     print_separator()
     print(f"  {user.name}  |  {role}  |  Age {user.age}  |  {user.gender.capitalize()}")
     print(f"  Occupation : {user.occupation}")
     print(f"  Bio        : {user.bio}")
     print(f"  Habits     : {', '.join(user.habits)}")
     print(f"  Languages  : {', '.join(user.languages)}")
-    if isinstance(user, HouseOwner):
-        print(f"  Neighbourhood : {user.neighborhood}  |  Rent: €{user.monthly_rent}/mo")
-    else:
-        budg = user.max_budget
-        hoods = ", ".join(user.preferred_neighborhoods)
-        print(f"  Budget     : €{budg}/mo  |  Wants: {hoods}")
+    print(f"  {user.get_detail()}")   # Polymorphism — each subclass formats its own detail
     print_separator()
 
 
@@ -46,13 +42,8 @@ def display_matches(matches, current_user, engine):
             print_separator()
             current_label = label
 
-        if isinstance(match, HouseOwner):
-            detail = f"Neighbourhood: {match.neighborhood}  |  Rent: €{match.monthly_rent}"
-        else:
-            detail = (f"Budget: €{match.max_budget}  |  "
-                      f"Wants: {', '.join(match.preferred_neighborhoods)}")
-
-        breakdown     = engine.score_breakdown(current_user, match)
+        detail    = match.get_detail()    # Polymorphism — no isinstance needed
+        breakdown = engine.score_breakdown(current_user, match)
         shared_habits = set(current_user.habits) & set(match.habits)
         habits_note   = ", ".join(shared_habits) if shared_habits else "none"
         vibe_tag      = "  ✦ Vibe match!" if breakdown["vibe"] > 0 else ""
@@ -192,16 +183,18 @@ def signup_flow():
     if role == "House Owner":
         neighborhood = _prompt_str("Your neighbourhood")
         monthly_rent = _prompt_int("Monthly rent (€)", lo=1, hi=100_000)
-        user = HouseOwner(
+        user = UserFactory.create(
+            "House Owner",
             user_id=uid, name=name, age=age, gender=gender.lower(),
             occupation=occupation, bio=bio, avatar_url="",
             habits=habits, languages=languages,
             neighborhood=neighborhood, monthly_rent=monthly_rent,
         )
     else:
-        max_budget             = _prompt_int("Max monthly budget (€)", lo=1, hi=100_000)
+        max_budget              = _prompt_int("Max monthly budget (€)", lo=1, hi=100_000)
         preferred_neighborhoods = _prompt_list("Preferred neighbourhoods")
-        user = HouseSeeker(
+        user = UserFactory.create(
+            "House Seeker",
             user_id=uid, name=name, age=age, gender=gender.lower(),
             occupation=occupation, bio=bio, avatar_url="",
             habits=habits, languages=languages,
