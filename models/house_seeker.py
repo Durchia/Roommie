@@ -27,7 +27,7 @@ class HouseSeeker(User):
     ):
         super().__init__(user_id, name, age, gender, occupation, bio,
                          avatar_url, habits, languages)
-        self.max_budget              = max_budget   # routed through property setter
+        self.max_budget              = max_budget   
         self.preferred_neighborhoods = preferred_neighborhoods
 
     # ── Encapsulation: max_budget ─────────────────────────────────────────

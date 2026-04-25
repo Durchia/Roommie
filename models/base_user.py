@@ -37,7 +37,7 @@ class User(ABC):
     @property
     def age(self) -> int:
         return self._age
-
+       
     @age.setter
     def age(self, value: int) -> None:
         if not (16 <= value <= 120):
@@ -49,7 +49,6 @@ class User(ABC):
     # ── Concrete shared method ────────────────────────────────────────────
 
     def get_summary(self) -> str:
-        """Short one-liner used in menus and logs."""
         return f"{self.name}, {self.age} ({self.occupation})"
 
     # ── Abstraction: subclasses must implement both ───────────────────────

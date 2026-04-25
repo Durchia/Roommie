@@ -28,7 +28,7 @@ class HouseOwner(User):
         super().__init__(user_id, name, age, gender, occupation, bio,
                          avatar_url, habits, languages)
         self.neighborhood  = neighborhood
-        self.monthly_rent  = monthly_rent   # routed through property setter
+        self.monthly_rent  = monthly_rent   
 
     # ── Encapsulation: monthly_rent ───────────────────────────────────────
 
