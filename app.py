@@ -268,6 +268,15 @@ def _tier_badge(label: str) -> str:
     return f'<span class="{cls}">{icon}&nbsp;{label}</span>'
 
 
+def _breakdown_label(raw: float, max_val: float) -> str:
+    """Convert a raw component score to a human-readable quality label."""
+    pct = (raw / max_val * 100) if max_val else 0
+    if pct >= 80: return "Excellent"
+    if pct >= 50: return "Good"
+    if pct >= 20: return "Partial"
+    return "Low"
+
+
 # ---------------------------------------------------------------------------
 # Part 2 — Discovery feed
 # ---------------------------------------------------------------------------
@@ -311,7 +320,7 @@ def render_discovery(user) -> None:
     # ── Filter out already-seen candidates ──────────────────────────────────
     seen_ids = get_seen_ids(user.user_id) | st.session_state.disliked_ids
     queue    = [(m, s, l) for m, s, l in st.session_state.candidates
-                if m.user_id not in seen_ids]
+                if m.user_id not in seen_ids and s > 0]
 
     if not queue:
         st.markdown(
@@ -333,11 +342,7 @@ def render_discovery(user) -> None:
     candidate, score, label = queue[0]
     remaining = len(queue)
 
-    # ── Progress indicator ───────────────────────────────────────────────────
-    total = len(st.session_state.candidates)
-    seen_count = total - remaining
-    st.caption(f"Candidate {seen_count + 1} of {total}")
-    st.progress(seen_count / total if total else 0.0)
+    st.caption(f"{remaining} potential match{'es' if remaining != 1 else ''} remaining")
     st.markdown("")
 
     # ── Discovery card ───────────────────────────────────────────────────────
@@ -348,6 +353,7 @@ def render_discovery(user) -> None:
     engine    = MatchingEngine()
     breakdown = engine.score_breakdown(user, candidate)
     shared    = set(user.habits) & set(candidate.habits)
+    ring_color = "#28a745" if label == "Perfect" else "#ffc107"
 
     col_card, col_score = st.columns([3, 2], gap="large")
 
@@ -356,8 +362,11 @@ def render_discovery(user) -> None:
             f"""
             <div class="disc-card">
                 <div style="display:flex;align-items:center;gap:18px;margin-bottom:14px;">
-                    <img src="{_avatar_src(candidate)}" width="90" height="90"
-                         style="border-radius:50%;object-fit:cover;flex-shrink:0;">
+                    <div style="border:3px solid {ring_color};border-radius:50%;
+                                padding:2px;flex-shrink:0;display:inline-flex;">
+                        <img src="{_avatar_src(candidate)}" width="90" height="90"
+                             style="border-radius:50%;object-fit:cover;">
+                    </div>
                     <div>
                         <div class="disc-name">{candidate.name}</div>
                         <div class="disc-sub">{role_str} &nbsp;·&nbsp; {candidate.occupation}
@@ -386,13 +395,13 @@ def render_discovery(user) -> None:
             _clamped_progress(score, 100)
 
             st.markdown("---")
-            st.caption(f"Habits  {breakdown['habits']:.1f} / 70")
+            st.caption(f"Habits — {_breakdown_label(breakdown['habits'], 70)}")
             _clamped_progress(breakdown["habits"], 70)
 
-            st.caption(f"Languages  {breakdown['languages']:.1f} / 20")
+            st.caption(f"Languages — {_breakdown_label(breakdown['languages'], 20)}")
             _clamped_progress(breakdown["languages"], 20)
 
-            st.caption(f"Vibe  {breakdown['vibe']:.1f} / 10")
+            st.caption(f"Vibe — {_breakdown_label(breakdown['vibe'], 10)}")
             _clamped_progress(breakdown["vibe"], 10)
 
             if breakdown["vibe"] > 0:
@@ -404,7 +413,7 @@ def render_discovery(user) -> None:
 
     # ── Like / Dislike buttons ───────────────────────────────────────────────
     st.markdown("")
-    btn_col1, btn_col2, btn_col3 = st.columns([2, 1, 2])
+    btn_col1, btn_col2 = st.columns([1, 1])
 
     with btn_col1:
         if st.button("✅  Like", use_container_width=True, key="btn_like",
@@ -412,11 +421,13 @@ def render_discovery(user) -> None:
             is_mutual = record_like(user.user_id, candidate.user_id)
             if is_mutual:
                 st.session_state.just_matched = candidate.name
+            st.toast("Liked! 💚")
             st.rerun()
 
-    with btn_col3:
+    with btn_col2:
         if st.button("❌  Dislike", use_container_width=True, key="btn_dislike"):
             st.session_state.disliked_ids.add(candidate.user_id)
+            st.toast("Passed")
             st.rerun()
 
 
@@ -430,13 +441,13 @@ def render_mutual_matches(user) -> None:
     if not mutual:
         st.markdown(
             """
-            <div style="text-align:center;padding:40px;color:#666;">
-                <div style="font-size:2.5rem;">💔</div>
-                <div style="font-size:1.1rem;font-weight:600;margin-top:8px;">
-                    No mutual matches yet
+            <div style="text-align:center;padding:40px;background:#e8f5e9;border-radius:16px;">
+                <div style="font-size:2.5rem;">🏡</div>
+                <div style="font-size:1.1rem;font-weight:600;margin-top:8px;color:#2e7d32;">
+                    Your first match is out there!
                 </div>
-                <div style="color:#888;margin-top:4px;">
-                    Head to Discover and start liking people!
+                <div style="color:#2e7d32;margin-top:4px;">
+                    Head to Discover and start liking people — your perfect roommate is waiting.
                 </div>
             </div>
             """,
@@ -502,10 +513,11 @@ def render_profile_card(user) -> None:
     with col_info:
         st.markdown(f"### {user.name}")
         st.markdown(f"**{role}** · {user.occupation} · Age {user.age} · {user.gender.capitalize()}")
-        st.markdown(f"*{user.bio}*")
-        st.markdown(_pills(user.habits), unsafe_allow_html=True)
-        st.caption(f"🗣 {' · '.join(user.languages)}")
-        st.markdown(user.get_detail())
+        with st.expander("See full profile"):
+            st.markdown(f"*{user.bio}*")
+            st.markdown(_pills(user.habits), unsafe_allow_html=True)
+            st.caption(f"🗣 {' · '.join(user.languages)}")
+            st.markdown(user.get_detail())
 
 
 # ---------------------------------------------------------------------------
@@ -538,8 +550,13 @@ def render_dashboard(user) -> None:
 
 def render_landing() -> None:
     st.markdown("# 🏠 Roommie Vilnius")
-    st.markdown("### Find your ideal roommate in the heart of Vilnius.")
-    st.info("👈 **Login** or **Sign Up** in the sidebar to get started.")
+    st.markdown("""
+<div style="background:linear-gradient(135deg,#667eea22,#764ba222);border-radius:16px;padding:32px;text-align:center;margin:24px 0;">
+  <div style="font-size:2.2rem;font-weight:700;color:var(--color-text-primary)">Find your perfect roommate in Vilnius</div>
+  <div style="font-size:1.1rem;color:var(--color-text-secondary);margin-top:8px">Smart matching based on habits, lifestyle &amp; budget</div>
+  <div style="margin-top:16px;font-size:0.95rem;color:var(--color-text-secondary)">👈 Login or Sign Up in the sidebar to get started</div>
+</div>
+""", unsafe_allow_html=True)
 
     all_users = get_all_users()
     owners  = sum(1 for u in all_users if isinstance(u, HouseOwner))
